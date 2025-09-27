@@ -1,9 +1,7 @@
-// client/vite.config.js
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // custom domain root => keep base at "/"
-  base: '/',
+  base: '/', // since using a custom domain
 })
