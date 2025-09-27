@@ -1,3 +1,4 @@
+// client/src/pages/HorsesForSale.jsx
 import React, { useEffect, useState, useContext } from 'react';
 import { Link } from 'react-router-dom'; // NEW
 import { supabase } from '../lib/supabaseClient';
@@ -28,7 +29,9 @@ const HorsesForSale = () => {
 
   // Per-card carousel index map: { [horseId]: number }
   const [carouselIndex, setCarouselIndex] = useState({});
-  const { user } = useContext(AuthContext);
+
+  // ⬇️ pull isAdmin from context (added)
+  const { user, isAdmin } = useContext(AuthContext);
 
   const fetchHorses = async () => {
     try {
@@ -230,6 +233,7 @@ const HorsesForSale = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {horses.map((horse) => {
             const isOwner = user && horse.owner_id === user.id;
+            const showDelete = isOwner || isAdmin; // ⬅️ admins can delete any
             const isEditing = editingId === horse.id;
 
             const imgs = getImagesForHorse(horse);
@@ -317,21 +321,22 @@ const HorsesForSale = () => {
                         View
                       </Link>
 
+                      {showDelete && (
+                        <button
+                          onClick={() => handleDelete(horse.id)}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      )}
+
                       {isOwner && (
-                        <>
-                          <button
-                            onClick={() => handleDelete(horse.id)}
-                            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                          >
-                            Delete
-                          </button>
-                          <button
-                            onClick={() => startEdit(horse)}
-                            className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                          >
-                            Edit
-                          </button>
-                        </>
+                        <button
+                          onClick={() => startEdit(horse)}
+                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                        >
+                          Edit
+                        </button>
                       )}
                     </div>
                   </>

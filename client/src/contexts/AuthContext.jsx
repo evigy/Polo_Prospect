@@ -6,17 +6,38 @@ export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
-  const [user, setUser] = useState(null);
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin via RPC
+  const fetchIsAdmin = async () => {
+    try {
+      const { data, error } = await supabase.rpc("is_admin");
+      if (error) {
+        console.error("is_admin rpc error:", error);
+        setIsAdmin(false);
+        return;
+      }
+      setIsAdmin(Boolean(data));
+    } catch (err) {
+      console.error("is_admin fetch failed:", err);
+      setIsAdmin(false);
+    }
+  };
 
   useEffect(() => {
     let unsubscribe = () => {};
 
     // Initial session load
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+      const s = data.session ?? null;
+      setSession(s);
+      setUser(s?.user ?? null);
       setLoading(false);
+
+      if (s?.user) fetchIsAdmin();
+      else setIsAdmin(false);
     });
 
     // Subscribe to auth changes
@@ -24,6 +45,9 @@ export const AuthProvider = ({ children }) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setLoading(false); // in case initial call raced
+
+      if (newSession?.user) fetchIsAdmin();
+      else setIsAdmin(false);
     });
 
     unsubscribe = () => sub.subscription.unsubscribe();
@@ -33,6 +57,8 @@ export const AuthProvider = ({ children }) => {
   async function signIn(email, password) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    // isAdmin will refresh via onAuthStateChange; optional manual refresh:
+    // await fetchIsAdmin();
   }
 
   async function signUp(email, password) {
@@ -42,6 +68,7 @@ export const AuthProvider = ({ children }) => {
 
   async function signOut() {
     await supabase.auth.signOut();
+    setIsAdmin(false);
   }
 
   const value = {
@@ -49,9 +76,11 @@ export const AuthProvider = ({ children }) => {
     user,
     isAuthenticated: !!user,
     loading,
+    isAdmin,           // <-- new
     signIn,
     signUp,
     signOut,
+    refreshAdmin: fetchIsAdmin, // optional: expose manual refresh
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
